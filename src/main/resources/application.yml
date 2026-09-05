@@ -9,6 +9,21 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        acks: all
+payments:
+  events:
+    topic: payment-events
+    publish-timeout: 5s
+  outbox:
+    batch-size: 100
+    poll-delay: 1s
 management:
   endpoints:
     web:

@@ -12,6 +12,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Ordered primary/fallback routing with explicit failure taxonomy
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
+- Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
 - Flyway-managed PostgreSQL schema
 - Bean Validation and consistent error responses
 - Health, metrics, OpenAPI, Docker Compose, and GitHub Actions
@@ -19,14 +20,14 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 
 ## Stack
 
-Java 17 · Spring Boot 3 · PostgreSQL · Flyway · JPA · Maven · Docker · JUnit 5 · Mockito
+Java 17 · Spring Boot 3 · PostgreSQL · Kafka · Flyway · JPA · Maven · Docker · JUnit 5 · Mockito
 
 ## Run locally
 
 Prerequisites: Java 17, Docker, and Maven 3.9+.
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres kafka
 mvn spring-boot:run
 ```
 
@@ -59,7 +60,6 @@ See [architecture decisions](docs/architecture.md) for request flow, trade-offs,
 
 ## Roadmap
 
-- Outbox publisher with Kafka and at-least-once delivery
 - Provider webhooks with signature validation and deduplication
 - Scheduled retry worker with exponential backoff
 - OpenTelemetry traces and Prometheus dashboard

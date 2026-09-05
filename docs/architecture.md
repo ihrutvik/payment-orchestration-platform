@@ -13,6 +13,8 @@ flowchart TD
   Primary -->|success or hard decline| Store[(PostgreSQL)]
   Fallback --> Store
   Store --> Outbox[Transactional outbox]
+  Outbox --> Relay[Leased relay workers]
+  Relay --> Kafka[(Kafka)]
 ```
 
 ## ADR-001: Idempotency is a database invariant
@@ -25,7 +27,7 @@ Only transient errors and soft declines may advance to another provider. Hard de
 
 ## ADR-003: Domain state and events commit together
 
-The payment update and outbox row share one transaction. A publisher can later forward unpublished rows to Kafka without losing an event between database commit and broker publish.
+The payment update and outbox row share one transaction. Relay workers lock small batches using `FOR UPDATE SKIP LOCKED`, publish them to Kafka, and mark them published in the same relay transaction. A broker failure rolls the transaction back so the row is retried. Delivery is at least once, so consumers must deduplicate by event identity.
 
 ## Production extensions
 
