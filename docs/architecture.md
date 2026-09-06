@@ -29,6 +29,10 @@ Only transient errors and soft declines may advance to another provider. Hard de
 
 The payment update and outbox row share one transaction. Relay workers lock small batches using `FOR UPDATE SKIP LOCKED`, publish them to Kafka, and mark them published in the same relay transaction. A broker failure rolls the transaction back so the row is retried. Delivery is at least once, so consumers must deduplicate by event identity.
 
+## ADR-004: Webhooks are authenticated and replay-safe
+
+The service verifies an HMAC-SHA256 signature over the untouched request body using constant-time comparison. It stores the provider event before applying state and enforces uniqueness on `(provider, event ID)`. Provider retries therefore return success without repeating the state transition.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.

@@ -13,6 +13,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
 - Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
+- Signed provider webhooks with HMAC-SHA256 verification and replay protection
 - Flyway-managed PostgreSQL schema
 - Bean Validation and consistent error responses
 - Health, metrics, OpenAPI, Docker Compose, and GitHub Actions
@@ -54,13 +55,16 @@ The included adapters are deterministic and make the project easy to demo:
 | Amount divisible by `13` | Primary timeout; fallback succeeds |
 | All other positive amounts | Primary succeeds |
 
+## Provider webhooks
+
+Provider callbacks are accepted at `POST /v1/provider-webhooks`. The signature is the lowercase HMAC-SHA256 hex digest of the exact request body using `WEBHOOK_SECRET`. Required headers are `X-Provider`, `X-Event-Id`, and `X-Signature`. The `(provider, event ID)` uniqueness constraint makes retries safe.
+
 ## Design
 
 See [architecture decisions](docs/architecture.md) for request flow, trade-offs, and production extensions.
 
 ## Roadmap
 
-- Provider webhooks with signature validation and deduplication
 - Scheduled retry worker with exponential backoff
 - OpenTelemetry traces and Prometheus dashboard
 - Testcontainers integration suite and load-test profile

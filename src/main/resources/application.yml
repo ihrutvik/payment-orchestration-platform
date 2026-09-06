@@ -24,6 +24,8 @@ payments:
   outbox:
     batch-size: 100
     poll-delay: 1s
+  webhooks:
+    secret: ${WEBHOOK_SECRET:local-development-secret}
 management:
   endpoints:
     web:
