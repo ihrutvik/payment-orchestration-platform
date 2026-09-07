@@ -26,6 +26,12 @@ payments:
     poll-delay: 1s
   webhooks:
     secret: ${WEBHOOK_SECRET:local-development-secret}
+  retry:
+    max-attempts: 5
+    base-delay: 30s
+    max-delay: 30m
+    batch-size: 50
+    poll-delay: 5s
 management:
   endpoints:
     web:

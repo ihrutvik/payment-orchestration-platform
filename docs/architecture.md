@@ -33,6 +33,10 @@ The payment update and outbox row share one transaction. Relay workers lock smal
 
 The service verifies an HMAC-SHA256 signature over the untouched request body using constant-time comparison. It stores the provider event before applying state and enforces uniqueness on `(provider, event ID)`. Provider retries therefore return success without repeating the state transition.
 
+## ADR-005: Retries are durable work, not sleeping threads
+
+Exhausted transient provider attempts create a PostgreSQL retry row with capped exponential backoff and deterministic jitter. Workers lease due rows with `SKIP LOCKED`, so multiple instances can process concurrently without duplicate leases. Success or a hard decline terminates retrying; reaching the configured limit creates a terminal failure event.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.

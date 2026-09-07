@@ -14,6 +14,8 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Transactional outbox for reliable downstream event delivery
 - Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
 - Signed provider webhooks with HMAC-SHA256 verification and replay protection
+- Durable retry scheduling with capped exponential backoff and deterministic jitter
+- Concurrent retry workers using PostgreSQL `SKIP LOCKED` leasing
 - Flyway-managed PostgreSQL schema
 - Bean Validation and consistent error responses
 - Health, metrics, OpenAPI, Docker Compose, and GitHub Actions
@@ -65,7 +67,6 @@ See [architecture decisions](docs/architecture.md) for request flow, trade-offs,
 
 ## Roadmap
 
-- Scheduled retry worker with exponential backoff
 - OpenTelemetry traces and Prometheus dashboard
 - Testcontainers integration suite and load-test profile
 
