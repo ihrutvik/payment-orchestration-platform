@@ -37,6 +37,10 @@ The service verifies an HMAC-SHA256 signature over the untouched request body us
 
 Exhausted transient provider attempts create a PostgreSQL retry row with capped exponential backoff and deterministic jitter. Workers lease due rows with `SKIP LOCKED`, so multiple instances can process concurrently without duplicate leases. Success or a hard decline terminates retrying; reaching the configured limit creates a terminal failure event.
 
+## ADR-006: Operational signals reflect business outcomes
+
+Prometheus counters expose created payments, idempotent replays, provider outcomes, and final payment states. Provider latency uses histograms suitable for p95/p99 alerts. Correlation IDs are accepted only from a bounded safe character set, returned to clients, and placed in logging context for cross-service investigation.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.

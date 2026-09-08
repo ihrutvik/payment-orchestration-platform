@@ -3,6 +3,8 @@ package com.hrutvik.payments;
 import com.hrutvik.payments.application.PaymentService;
 import com.hrutvik.payments.domain.*;
 import com.hrutvik.payments.persistence.*;
+import com.hrutvik.payments.infrastructure.PaymentMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.*;
 import org.mockito.ArgumentCaptor;
 import java.math.BigDecimal;
@@ -16,6 +18,7 @@ class PaymentServiceTest {
   private final OutboxRepository outbox=mock(OutboxRepository.class);
   private final PaymentRetryRepository retries=mock(PaymentRetryRepository.class);
   private final RetryPolicy retryPolicy=mock(RetryPolicy.class);
+  private final PaymentMetrics metrics=new PaymentMetrics(new SimpleMeterRegistry());
   private final PaymentProvider primary=mock(PaymentProvider.class);
   private final PaymentProvider fallback=mock(PaymentProvider.class);
 
@@ -46,5 +49,5 @@ class PaymentServiceTest {
     Payment result=service().create("checkout-789","merchant",new BigDecimal("50.00"),"EUR");
     assertThat(result.getStatus()).isEqualTo(PaymentStatus.DECLINED); verifyNoInteractions(fallback);
   }
-  private PaymentService service(){return new PaymentService(payments,outbox,retries,retryPolicy,List.of(primary,fallback));}
+  private PaymentService service(){return new PaymentService(payments,outbox,retries,retryPolicy,metrics,List.of(primary,fallback));}
 }

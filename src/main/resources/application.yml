@@ -41,6 +41,15 @@ management:
     health:
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: payment-orchestration-platform
+    distribution:
+      percentiles-histogram:
+        payments.provider.latency: true
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId:-none}]"
 springdoc:
   swagger-ui:
     path: /docs

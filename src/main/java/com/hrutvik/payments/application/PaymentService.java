@@ -2,6 +2,7 @@ package com.hrutvik.payments.application;
 
 import com.hrutvik.payments.domain.*;
 import com.hrutvik.payments.persistence.*;
+import com.hrutvik.payments.infrastructure.PaymentMetrics;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -10,16 +11,17 @@ import java.util.*;
 @Service
 public class PaymentService {
   private final PaymentRepository payments; private final OutboxRepository outbox; private final PaymentRetryRepository retries;
-  private final RetryPolicy retryPolicy; private final List<PaymentProvider> providers;
-  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,List<PaymentProvider> providers){
-    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.providers=providers;
+  private final RetryPolicy retryPolicy; private final PaymentMetrics metrics; private final List<PaymentProvider> providers;
+  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,PaymentMetrics metrics,List<PaymentProvider> providers){
+    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.metrics=metrics;this.providers=providers;
   }
 
   @Transactional
   public Payment create(String key, String merchantId, BigDecimal amount, String currency){
     var existing=payments.findByIdempotencyKey(key);
-    if(existing.isPresent()) return existing.get();
+    if(existing.isPresent()){metrics.idempotentReplay();return existing.get();}
     var payment=payments.save(new Payment(UUID.randomUUID(),key,merchantId,amount,currency.toUpperCase(Locale.ROOT)));
+    metrics.created();
     return attempt(payment,0);
   }
 
@@ -36,7 +38,7 @@ public class PaymentService {
   private Payment attempt(Payment payment,int retryNumber){
     for(var provider:providers){
       payment.recordAttempt(provider.name());
-      ProviderResult result=provider.charge(payment.getId(), payment.getAmount(), payment.getCurrency());
+      ProviderResult result=metrics.providerCall(provider.name(),()->provider.charge(payment.getId(),payment.getAmount(),payment.getCurrency()));
       switch(result.outcome()){
         case SUCCESS -> { payment.succeed(result.reference()); return complete(payment,"PAYMENT_SUCCEEDED"); }
         case HARD_DECLINE -> { payment.decline(result.code()); return complete(payment,"PAYMENT_DECLINED"); }
@@ -58,6 +60,7 @@ public class PaymentService {
 
   private Payment complete(Payment payment,String event){
     var saved=payments.save(payment);
+    metrics.outcome(saved.getStatus().name());
     outbox.save(new OutboxEvent(saved.getId(),event,"{\"paymentId\":\""+saved.getId()+"\",\"status\":\""+saved.getStatus()+"\"}"));
     return saved;
   }

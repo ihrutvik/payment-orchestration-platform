@@ -16,6 +16,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Signed provider webhooks with HMAC-SHA256 verification and replay protection
 - Durable retry scheduling with capped exponential backoff and deterministic jitter
 - Concurrent retry workers using PostgreSQL `SKIP LOCKED` leasing
+- Prometheus business metrics, provider-latency histograms, and correlation IDs
 - Flyway-managed PostgreSQL schema
 - Bean Validation and consistent error responses
 - Health, metrics, OpenAPI, Docker Compose, and GitHub Actions
@@ -35,6 +36,7 @@ mvn spring-boot:run
 ```
 
 Open Swagger UI at `http://localhost:8080/docs` and health at `http://localhost:8080/actuator/health`.
+Prometheus metrics are available at `http://localhost:8080/actuator/prometheus`. Every HTTP response includes `X-Correlation-Id`; callers may supply a valid ID to correlate logs across services.
 
 ## Example
 
@@ -67,7 +69,7 @@ See [architecture decisions](docs/architecture.md) for request flow, trade-offs,
 
 ## Roadmap
 
-- OpenTelemetry traces and Prometheus dashboard
+- OpenTelemetry traces and a Grafana dashboard
 - Testcontainers integration suite and load-test profile
 
 ## License
