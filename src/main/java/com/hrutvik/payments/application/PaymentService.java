@@ -11,16 +11,20 @@ import java.util.*;
 @Service
 public class PaymentService {
   private final PaymentRepository payments; private final OutboxRepository outbox; private final PaymentRetryRepository retries;
-  private final RetryPolicy retryPolicy; private final PaymentMetrics metrics; private final List<PaymentProvider> providers;
-  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,PaymentMetrics metrics,List<PaymentProvider> providers){
-    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.metrics=metrics;this.providers=providers;
+  private final RetryPolicy retryPolicy; private final RequestFingerprint fingerprints; private final PaymentMetrics metrics; private final List<PaymentProvider> providers;
+  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,RequestFingerprint fingerprints,PaymentMetrics metrics,List<PaymentProvider> providers){
+    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.fingerprints=fingerprints;this.metrics=metrics;this.providers=providers;
   }
 
   @Transactional
   public Payment create(String key, String merchantId, BigDecimal amount, String currency){
+    String requestHash=fingerprints.of(merchantId,amount,currency);
     var existing=payments.findByIdempotencyKey(key);
-    if(existing.isPresent()){metrics.idempotentReplay();return existing.get();}
-    var payment=payments.save(new Payment(UUID.randomUUID(),key,merchantId,amount,currency.toUpperCase(Locale.ROOT)));
+    if(existing.isPresent()){
+      if(existing.get().getRequestHash()!=null && !existing.get().getRequestHash().equals(requestHash)) throw new IdempotencyConflictException();
+      metrics.idempotentReplay();return existing.get();
+    }
+    var payment=payments.save(new Payment(UUID.randomUUID(),key,requestHash,merchantId,amount,currency.toUpperCase(Locale.ROOT)));
     metrics.created();
     return attempt(payment,0);
   }

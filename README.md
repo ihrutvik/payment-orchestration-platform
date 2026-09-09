@@ -9,6 +9,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 ## Features
 
 - Idempotent `POST /v1/payments` API backed by a database uniqueness constraint
+- SHA-256 request fingerprints that reject unsafe idempotency-key reuse with HTTP 409
 - Ordered primary/fallback routing with explicit failure taxonomy
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
@@ -48,6 +49,7 @@ curl -i http://localhost:8080/v1/payments \
 ```
 
 Repeat the request with the same key to receive the original payment rather than creating a second charge.
+Reusing that key with a different merchant, amount, or currency returns `409 IDEMPOTENCY_CONFLICT`.
 
 ## Failure simulation
 

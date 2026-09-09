@@ -19,7 +19,7 @@ flowchart TD
 
 ## ADR-001: Idempotency is a database invariant
 
-`Idempotency-Key` has a unique constraint. Application lookup makes normal retries cheap; the constraint remains the final guard against concurrent duplicate requests.
+`Idempotency-Key` has a unique constraint. Each row also stores a SHA-256 fingerprint over canonical merchant, amount, and currency inputs. Exact retries return the original result; reuse with different charge-defining data returns HTTP 409. The database constraint remains the final guard against concurrent duplicate requests.
 
 ## ADR-002: Provider fallback is ordered
 
