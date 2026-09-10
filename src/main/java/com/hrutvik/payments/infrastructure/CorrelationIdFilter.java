@@ -11,7 +11,7 @@ import java.util.UUID;
 @Component
 public class CorrelationIdFilter extends OncePerRequestFilter {
   static final String HEADER="X-Correlation-Id";
-  @Override protected void doFilter(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException{
+  @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException{
     String supplied=request.getHeader(HEADER);
     String correlationId=supplied!=null && supplied.matches("[A-Za-z0-9._-]{8,64}")?supplied:UUID.randomUUID().toString();
     MDC.put("correlationId",correlationId); response.setHeader(HEADER,correlationId);
