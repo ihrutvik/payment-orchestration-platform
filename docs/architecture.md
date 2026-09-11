@@ -52,3 +52,5 @@ Prometheus counters expose created payments, idempotent replays, provider outcom
 ## Verification strategy
 
 Fast unit tests cover routing, failure classification, retry policy, metrics, and cryptographic verification. Testcontainers starts PostgreSQL 16 in CI to apply every Flyway migration and exercise database-specific behavior including partial indexes, uniqueness constraints, and `FOR UPDATE SKIP LOCKED` leasing.
+
+Flyway V5 aligns the legacy fixed-width currency column with the JPA `VARCHAR(3)` contract, keeping Hibernate schema validation enabled as a deployment gate.
