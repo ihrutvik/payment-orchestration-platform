@@ -48,3 +48,7 @@ Prometheus counters expose created payments, idempotent replays, provider outcom
 - Replace demo providers with isolated HTTP clients using timeouts, circuit breakers, and signed requests.
 - Encrypt provider tokens and minimize PCI scope through hosted fields/tokenization.
 - Add retry scheduling with exponential backoff, jitter, and a terminal dead-letter path.
+
+## Verification strategy
+
+Fast unit tests cover routing, failure classification, retry policy, metrics, and cryptographic verification. Testcontainers starts PostgreSQL 16 in CI to apply every Flyway migration and exercise database-specific behavior including partial indexes, uniqueness constraints, and `FOR UPDATE SKIP LOCKED` leasing.

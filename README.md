@@ -22,6 +22,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Bean Validation and consistent error responses
 - Health, metrics, OpenAPI, Docker Compose, and GitHub Actions
 - Unit tests for duplicate requests, failover, and hard-decline behavior
+- Testcontainers integration tests for Flyway migrations, database constraints, and PostgreSQL leasing
 
 ## Stack
 

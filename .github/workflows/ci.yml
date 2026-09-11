@@ -16,7 +16,7 @@ jobs:
           java-version: "17"
           cache: maven
       - run: mvn --batch-mode verify
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: application-jar
           path: target/*.jar
