@@ -21,7 +21,7 @@ public class ProviderCircuitBreaker {
     this(failureThreshold,openDuration,Clock.systemUTC());
   }
 
-  ProviderCircuitBreaker(int failureThreshold,Duration openDuration,Clock clock){
+  public ProviderCircuitBreaker(int failureThreshold,Duration openDuration,Clock clock){
     if(failureThreshold<1) throw new IllegalArgumentException("failureThreshold must be positive");
     this.failureThreshold=failureThreshold;this.openDuration=openDuration;this.clock=clock;
   }
