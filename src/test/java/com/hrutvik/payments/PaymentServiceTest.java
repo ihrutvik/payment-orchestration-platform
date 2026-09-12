@@ -20,6 +20,7 @@ class PaymentServiceTest {
   private final RetryPolicy retryPolicy=mock(RetryPolicy.class);
   private final RequestFingerprint fingerprints=new RequestFingerprint();
   private final PaymentMetrics metrics=new PaymentMetrics(new SimpleMeterRegistry());
+  private final ProviderCircuitBreaker circuitBreaker=new ProviderCircuitBreaker(3,java.time.Duration.ofSeconds(30),java.time.Clock.systemUTC());
   private final PaymentProvider primary=mock(PaymentProvider.class);
   private final PaymentProvider fallback=mock(PaymentProvider.class);
 
@@ -58,5 +59,5 @@ class PaymentServiceTest {
     Payment result=service().create("checkout-789","merchant",new BigDecimal("50.00"),"EUR");
     assertThat(result.getStatus()).isEqualTo(PaymentStatus.DECLINED); verifyNoInteractions(fallback);
   }
-  private PaymentService service(){return new PaymentService(payments,outbox,retries,retryPolicy,fingerprints,metrics,List.of(primary,fallback));}
+  private PaymentService service(){return new PaymentService(payments,outbox,retries,retryPolicy,fingerprints,metrics,circuitBreaker,List.of(primary,fallback));}
 }

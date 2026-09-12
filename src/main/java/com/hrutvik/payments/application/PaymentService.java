@@ -11,9 +11,9 @@ import java.util.*;
 @Service
 public class PaymentService {
   private final PaymentRepository payments; private final OutboxRepository outbox; private final PaymentRetryRepository retries;
-  private final RetryPolicy retryPolicy; private final RequestFingerprint fingerprints; private final PaymentMetrics metrics; private final List<PaymentProvider> providers;
-  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,RequestFingerprint fingerprints,PaymentMetrics metrics,List<PaymentProvider> providers){
-    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.fingerprints=fingerprints;this.metrics=metrics;this.providers=providers;
+  private final RetryPolicy retryPolicy; private final RequestFingerprint fingerprints; private final PaymentMetrics metrics; private final ProviderCircuitBreaker circuitBreaker; private final List<PaymentProvider> providers;
+  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,RequestFingerprint fingerprints,PaymentMetrics metrics,ProviderCircuitBreaker circuitBreaker,List<PaymentProvider> providers){
+    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.fingerprints=fingerprints;this.metrics=metrics;this.circuitBreaker=circuitBreaker;this.providers=providers;
   }
 
   @Transactional
@@ -41,8 +41,20 @@ public class PaymentService {
 
   private Payment attempt(Payment payment,int retryNumber){
     for(var provider:providers){
+      if(!circuitBreaker.allowRequest(provider.name())){
+        metrics.providerCircuitOpen(provider.name());
+        continue;
+      }
       payment.recordAttempt(provider.name());
-      ProviderResult result=metrics.providerCall(provider.name(),()->provider.charge(payment.getId(),payment.getAmount(),payment.getCurrency()));
+      ProviderResult result;
+      try{
+        result=metrics.providerCall(provider.name(),()->provider.charge(payment.getId(),payment.getAmount(),payment.getCurrency()));
+      }catch(RuntimeException providerFailure){
+        circuitBreaker.record(provider.name(),ProviderResult.Outcome.TRANSIENT_ERROR);
+        payment.retry("PROVIDER_EXCEPTION");
+        continue;
+      }
+      circuitBreaker.record(provider.name(),result.outcome());
       switch(result.outcome()){
         case SUCCESS -> { payment.succeed(result.reference()); return complete(payment,"PAYMENT_SUCCEEDED"); }
         case HARD_DECLINE -> { payment.decline(result.code()); return complete(payment,"PAYMENT_DECLINED"); }

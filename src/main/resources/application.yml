@@ -32,6 +32,10 @@ payments:
     max-delay: 30m
     batch-size: 50
     poll-delay: 5s
+  providers:
+    circuit-breaker:
+      failure-threshold: 3
+      open-duration: 30s
 management:
   endpoints:
     web:

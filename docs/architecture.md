@@ -41,6 +41,10 @@ Exhausted transient provider attempts create a PostgreSQL retry row with capped 
 
 Prometheus counters expose created payments, idempotent replays, provider outcomes, and final payment states. Provider latency uses histograms suitable for p95/p99 alerts. Correlation IDs are accepted only from a bounded safe character set, returned to clients, and placed in logging context for cross-service investigation.
 
+## ADR-007: Provider failures are isolated locally
+
+Each provider has an independent consecutive-failure circuit. Only transient infrastructure outcomes contribute to opening it; customer and business declines do not. Open circuits are bypassed so the ordered fallback chain can continue without spending latency budget on a known unhealthy dependency. After the cool-down, one half-open probe decides whether to close or reopen the circuit. This intentionally favors fast per-instance protection; a production deployment can aggregate provider-health alerts without introducing a shared store into the synchronous payment path.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.

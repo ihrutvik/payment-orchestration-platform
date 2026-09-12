@@ -11,6 +11,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Idempotent `POST /v1/payments` API backed by a database uniqueness constraint
 - SHA-256 request fingerprints that reject unsafe idempotency-key reuse with HTTP 409
 - Ordered primary/fallback routing with explicit failure taxonomy
+- Per-provider circuit breakers with a single half-open recovery probe
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
 - Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
@@ -26,7 +27,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 
 ## Stack
 
-Java 17 · Spring Boot 3 · PostgreSQL · Kafka · Flyway · JPA · Maven · Docker · JUnit 5 · Mockito
+Java 17 · Spring Boot 3 · PostgreSQL · Kafka · Flyway · JPA · Maven · Docker · Testcontainers · JUnit 5 · Mockito
 
 ## Run locally
 
@@ -65,6 +66,10 @@ The included adapters are deterministic and make the project easy to demo:
 ## Provider webhooks
 
 Provider callbacks are accepted at `POST /v1/provider-webhooks`. The signature is the lowercase HMAC-SHA256 hex digest of the exact request body using `WEBHOOK_SECRET`. Required headers are `X-Provider`, `X-Event-Id`, and `X-Signature`. The `(provider, event ID)` uniqueness constraint makes retries safe.
+
+## Provider resilience
+
+Three consecutive transient failures open a provider's circuit for 30 seconds. Requests bypass the unhealthy provider and continue through the ordered fallback chain. After the cool-down, exactly one request is admitted as a half-open probe; success closes the circuit, while another transient failure reopens it. Business declines never affect provider health. Both thresholds are configurable under `payments.providers.circuit-breaker`, and bypasses are exported as `payments.provider.circuit.open.total`.
 
 ## Design
 

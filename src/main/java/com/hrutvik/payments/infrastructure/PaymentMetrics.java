@@ -13,6 +13,7 @@ public class PaymentMetrics {
   public void created(){registry.counter("payments.created.total").increment();}
   public void idempotentReplay(){registry.counter("payments.idempotent.replays.total").increment();}
   public void outcome(String status){registry.counter("payments.outcomes.total","status",status).increment();}
+  public void providerCircuitOpen(String provider){registry.counter("payments.provider.circuit.open.total","provider",provider).increment();}
   public ProviderResult providerCall(String provider,Supplier<ProviderResult> call){
     Timer.Sample sample=Timer.start(registry);
     try{
