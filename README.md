@@ -12,6 +12,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - SHA-256 request fingerprints that reject unsafe idempotency-key reuse with HTTP 409
 - Ordered primary/fallback routing with explicit failure taxonomy
 - Per-provider circuit breakers with a single half-open recovery probe
+- Idempotent partial refunds with locked-balance protection against concurrent over-refunds
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
 - Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
@@ -52,6 +53,17 @@ curl -i http://localhost:8080/v1/payments \
 
 Repeat the request with the same key to receive the original payment rather than creating a second charge.
 Reusing that key with a different merchant, amount, or currency returns `409 IDEMPOTENCY_CONFLICT`.
+
+Create a partial refund for a successful payment:
+
+```bash
+curl -i -X POST http://localhost:8080/v1/payments/{paymentId}/refunds \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: refund-checkout-001' \
+  -d '{"amount":20.00}'
+```
+
+Refund creation locks the payment row, calculates the already-refunded total, and rejects an amount above the remaining balance with HTTP 422. Exact retries return the original refund.
 
 ## Failure simulation
 

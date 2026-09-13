@@ -45,6 +45,10 @@ Prometheus counters expose created payments, idempotent replays, provider outcom
 
 Each provider has an independent consecutive-failure circuit. Only transient infrastructure outcomes contribute to opening it; customer and business declines do not. Open circuits are bypassed so the ordered fallback chain can continue without spending latency budget on a known unhealthy dependency. After the cool-down, one half-open probe decides whether to close or reopen the circuit. This intentionally favors fast per-instance protection; a production deployment can aggregate provider-health alerts without introducing a shared store into the synchronous payment path.
 
+## ADR-008: Refund balance is serialized on the payment
+
+Refund requests have their own globally unique idempotency keys. Before calculating the remaining refundable balance, the transaction acquires a pessimistic lock on the payment row. Concurrent refunds for the same payment are therefore serialized, preventing both requests from observing the same balance and over-refunding. The refund row and `REFUND_SUCCEEDED` outbox event commit atomically.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.
