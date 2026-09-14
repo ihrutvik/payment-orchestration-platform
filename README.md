@@ -13,6 +13,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Ordered primary/fallback routing with explicit failure taxonomy
 - Per-provider circuit breakers with a single half-open recovery probe
 - Idempotent partial refunds with locked-balance protection against concurrent over-refunds
+- Settlement reconciliation with mismatch detection and durable discrepancy events
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
 - Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
@@ -82,6 +83,16 @@ Provider callbacks are accepted at `POST /v1/provider-webhooks`. The signature i
 ## Provider resilience
 
 Three consecutive transient failures open a provider's circuit for 30 seconds. Requests bypass the unhealthy provider and continue through the ordered fallback chain. After the cool-down, exactly one request is admitted as a half-open probe; success closes the circuit, while another transient failure reopens it. Business declines never affect provider health. Both thresholds are configurable under `payments.providers.circuit-breaker`, and bypasses are exported as `payments.provider.circuit.open.total`.
+
+## Settlement reconciliation
+
+Provider settlement rows are ingested through `POST /v1/reconciliation/records`. The service deduplicates each `(provider, externalRecordId)`, matches the provider reference to a payment, and classifies the row as `MATCHED`, `PAYMENT_NOT_FOUND`, `AMOUNT_MISMATCH`, or `CURRENCY_MISMATCH`. Discrepancies atomically create `SETTLEMENT_DISCREPANCY_DETECTED` outbox events and are counted by status.
+
+```bash
+curl -i -X POST http://localhost:8080/v1/reconciliation/records \
+  -H 'Content-Type: application/json' \
+  -d '{"provider":"atlas-pay","externalRecordId":"settlement-20260914-001","providerReference":"atlas_abc123","amount":49.99,"currency":"EUR"}'
+```
 
 ## Design
 

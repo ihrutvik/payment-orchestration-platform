@@ -49,6 +49,10 @@ Each provider has an independent consecutive-failure circuit. Only transient inf
 
 Refund requests have their own globally unique idempotency keys. Before calculating the remaining refundable balance, the transaction acquires a pessimistic lock on the payment row. Concurrent refunds for the same payment are therefore serialized, preventing both requests from observing the same balance and over-refunding. The refund row and `REFUND_SUCCEEDED` outbox event commit atomically.
 
+## ADR-009: Reconciliation is an append-only audit boundary
+
+Settlement records are immutable and deduplicated by the provider's natural record identity. Matching uses the provider reference and exact monetary values, preserving discrepancies instead of silently correcting them. A mismatch row and its alert event commit in one transaction, enabling replayable investigation and downstream case-management without coupling the ingestion API to an alerting system.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.
