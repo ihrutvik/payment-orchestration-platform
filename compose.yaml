@@ -17,12 +17,15 @@ services:
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/payments
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
     ports: ["8080:8080"]
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_started
+      redis:
+        condition: service_healthy
   kafka:
     image: bitnami/kafka:3.7
     environment:
@@ -35,5 +38,16 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
     ports: ["9092:9092"]
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    volumes: ["redis-data:/data"]
 volumes:
   postgres-data:
+  redis-data:

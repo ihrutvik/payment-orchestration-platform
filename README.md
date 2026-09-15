@@ -14,6 +14,7 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 - Per-provider circuit breakers with a single half-open recovery probe
 - Idempotent partial refunds with locked-balance protection against concurrent over-refunds
 - Settlement reconciliation with mismatch detection and durable discrepancy events
+- Redis-backed distributed merchant rate limiting with atomic Lua execution
 - Optimistic locking for concurrent state changes
 - Transactional outbox for reliable downstream event delivery
 - Kafka relay with database row leasing (`SKIP LOCKED`) for safe horizontal scaling
@@ -29,14 +30,14 @@ Payment systems fail in ambiguous ways: callers retry, providers time out after 
 
 ## Stack
 
-Java 17 · Spring Boot 3 · PostgreSQL · Kafka · Flyway · JPA · Maven · Docker · Testcontainers · JUnit 5 · Mockito
+Java 17 · Spring Boot 3 · PostgreSQL · Kafka · Redis · Flyway · JPA · Maven · Docker · Testcontainers · JUnit 5 · Mockito
 
 ## Run locally
 
 Prerequisites: Java 17, Docker, and Maven 3.9+.
 
 ```bash
-docker compose up -d postgres kafka
+docker compose up -d postgres kafka redis
 mvn spring-boot:run
 ```
 
@@ -93,6 +94,10 @@ curl -i -X POST http://localhost:8080/v1/reconciliation/records \
   -H 'Content-Type: application/json' \
   -d '{"provider":"atlas-pay","externalRecordId":"settlement-20260914-001","providerReference":"atlas_abc123","amount":49.99,"currency":"EUR"}'
 ```
+
+## Distributed rate limiting
+
+New payment attempts are limited per merchant through one atomic Redis Lua operation. The default allows 100 requests per minute across every application instance. Exact idempotent replays bypass the limiter because they cannot create a second charge. Redis outages default to availability-preserving fail-open behavior, which is configurable through `payments.rate-limit.fail-open`. Rejections return HTTP 429 with `Retry-After`.
 
 ## Design
 

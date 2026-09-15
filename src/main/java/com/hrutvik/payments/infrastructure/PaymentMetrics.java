@@ -15,6 +15,8 @@ public class PaymentMetrics {
   public void outcome(String status){registry.counter("payments.outcomes.total","status",status).increment();}
   public void providerCircuitOpen(String provider){registry.counter("payments.provider.circuit.open.total","provider",provider).increment();}
   public void reconciliation(String status){registry.counter("payments.reconciliation.records.total","status",status).increment();}
+  public void rateLimited(){registry.counter("payments.rate.limit.rejected.total").increment();}
+  public void rateLimiterUnavailable(boolean failOpen){registry.counter("payments.rate.limit.redis.errors.total","policy",failOpen?"fail_open":"fail_closed").increment();}
   public ProviderResult providerCall(String provider,Supplier<ProviderResult> call){
     Timer.Sample sample=Timer.start(registry);
     try{

@@ -2,7 +2,7 @@ package com.hrutvik.payments.application;
 
 import com.hrutvik.payments.domain.*;
 import com.hrutvik.payments.persistence.*;
-import com.hrutvik.payments.infrastructure.PaymentMetrics;
+import com.hrutvik.payments.infrastructure.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -11,9 +11,9 @@ import java.util.*;
 @Service
 public class PaymentService {
   private final PaymentRepository payments; private final OutboxRepository outbox; private final PaymentRetryRepository retries;
-  private final RetryPolicy retryPolicy; private final RequestFingerprint fingerprints; private final PaymentMetrics metrics; private final ProviderCircuitBreaker circuitBreaker; private final List<PaymentProvider> providers;
-  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,RequestFingerprint fingerprints,PaymentMetrics metrics,ProviderCircuitBreaker circuitBreaker,List<PaymentProvider> providers){
-    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.fingerprints=fingerprints;this.metrics=metrics;this.circuitBreaker=circuitBreaker;this.providers=providers;
+  private final RetryPolicy retryPolicy; private final RequestFingerprint fingerprints; private final PaymentMetrics metrics; private final ProviderCircuitBreaker circuitBreaker; private final MerchantRateLimiter rateLimiter; private final List<PaymentProvider> providers;
+  public PaymentService(PaymentRepository payments,OutboxRepository outbox,PaymentRetryRepository retries,RetryPolicy retryPolicy,RequestFingerprint fingerprints,PaymentMetrics metrics,ProviderCircuitBreaker circuitBreaker,MerchantRateLimiter rateLimiter,List<PaymentProvider> providers){
+    this.payments=payments;this.outbox=outbox;this.retries=retries;this.retryPolicy=retryPolicy;this.fingerprints=fingerprints;this.metrics=metrics;this.circuitBreaker=circuitBreaker;this.rateLimiter=rateLimiter;this.providers=providers;
   }
 
   @Transactional
@@ -24,6 +24,7 @@ public class PaymentService {
       if(existing.get().getRequestHash()!=null && !existing.get().getRequestHash().equals(requestHash)) throw new IdempotencyConflictException();
       metrics.idempotentReplay();return existing.get();
     }
+    if(!rateLimiter.allow(merchantId)) throw new RateLimitExceededException(rateLimiter.retryAfterSeconds());
     var payment=payments.save(new Payment(UUID.randomUUID(),key,requestHash,merchantId,amount,currency.toUpperCase(Locale.ROOT)));
     metrics.created();
     return attempt(payment,0);

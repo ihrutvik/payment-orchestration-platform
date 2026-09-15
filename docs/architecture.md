@@ -53,6 +53,10 @@ Refund requests have their own globally unique idempotency keys. Before calculat
 
 Settlement records are immutable and deduplicated by the provider's natural record identity. Matching uses the provider reference and exact monetary values, preserving discrepancies instead of silently correcting them. A mismatch row and its alert event commit in one transaction, enabling replayable investigation and downstream case-management without coupling the ingestion API to an alerting system.
 
+## ADR-010: Admission control is distributed but idempotent replays are free
+
+A Redis Lua script increments the merchant counter and assigns its expiry atomically, so every service replica shares the same fixed-window limit without race conditions. Existing idempotency keys are resolved before admission control because replaying a completed request does not add provider load or duplicate financial work. Redis failure policy is explicit and observable; the default fails open to preserve payment availability, while stricter deployments can fail closed.
+
 ## Production extensions
 
 - Persist request fingerprints and reject key reuse with a different body.

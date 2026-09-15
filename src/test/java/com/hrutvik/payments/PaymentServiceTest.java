@@ -4,6 +4,7 @@ import com.hrutvik.payments.application.*;
 import com.hrutvik.payments.domain.*;
 import com.hrutvik.payments.persistence.*;
 import com.hrutvik.payments.infrastructure.PaymentMetrics;
+import com.hrutvik.payments.infrastructure.MerchantRateLimiter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.*;
 import org.mockito.ArgumentCaptor;
@@ -21,10 +22,11 @@ class PaymentServiceTest {
   private final RequestFingerprint fingerprints=new RequestFingerprint();
   private final PaymentMetrics metrics=new PaymentMetrics(new SimpleMeterRegistry());
   private final ProviderCircuitBreaker circuitBreaker=new ProviderCircuitBreaker(3,java.time.Duration.ofSeconds(30),java.time.Clock.systemUTC());
+  private final MerchantRateLimiter rateLimiter=mock(MerchantRateLimiter.class);
   private final PaymentProvider primary=mock(PaymentProvider.class);
   private final PaymentProvider fallback=mock(PaymentProvider.class);
 
-  @BeforeEach void setup(){when(payments.save(any())).thenAnswer(i->i.getArgument(0));when(outbox.save(any())).thenAnswer(i->i.getArgument(0));}
+  @BeforeEach void setup(){when(payments.save(any())).thenAnswer(i->i.getArgument(0));when(outbox.save(any())).thenAnswer(i->i.getArgument(0));when(rateLimiter.allow(any())).thenReturn(true);}
 
   @Test void returnsOriginalPaymentForRepeatedIdempotencyKey(){
     Payment existing=new Payment(UUID.randomUUID(),"checkout-123",fingerprints.of("merchant",new BigDecimal("42.00"),"EUR"),"merchant",new BigDecimal("42.00"),"EUR");
@@ -59,5 +61,12 @@ class PaymentServiceTest {
     Payment result=service().create("checkout-789","merchant",new BigDecimal("50.00"),"EUR");
     assertThat(result.getStatus()).isEqualTo(PaymentStatus.DECLINED); verifyNoInteractions(fallback);
   }
-  private PaymentService service(){return new PaymentService(payments,outbox,retries,retryPolicy,fingerprints,metrics,circuitBreaker,List.of(primary,fallback));}
+  @Test void rejectsNewPaymentWhenMerchantLimitIsExceeded(){
+    when(payments.findByIdempotencyKey(any())).thenReturn(Optional.empty());
+    when(rateLimiter.allow("merchant")).thenReturn(false);when(rateLimiter.retryAfterSeconds()).thenReturn(60L);
+    org.assertj.core.api.Assertions.assertThatThrownBy(()->service().create("checkout-limit","merchant",new BigDecimal("10.00"),"EUR"))
+        .isInstanceOf(RateLimitExceededException.class);
+    verify(payments,never()).save(any());verifyNoInteractions(primary,fallback);
+  }
+  private PaymentService service(){return new PaymentService(payments,outbox,retries,retryPolicy,fingerprints,metrics,circuitBreaker,rateLimiter,List.of(primary,fallback));}
 }

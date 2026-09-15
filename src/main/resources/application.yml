@@ -17,6 +17,10 @@ spring:
       properties:
         enable.idempotence: true
         acks: all
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 payments:
   events:
     topic: payment-events
@@ -36,6 +40,10 @@ payments:
     circuit-breaker:
       failure-threshold: 3
       open-duration: 30s
+  rate-limit:
+    requests: 100
+    window: 1m
+    fail-open: true
 management:
   endpoints:
     web:
